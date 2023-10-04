@@ -1,73 +1,53 @@
-import Todo from "../Models/ToDoModel.js";
-import {body} from "express-validator";
-import User from "../Models/UserModel.js";
+const ApiError =  require('../error/ApiError')
+const {Todo, TodoList} = require('../Models/models')
 
-class TodoController{
-    async create(req,res){
-        try {
-            const {header, body} = req.body
-            const todo = await Todo.create({
-                header: header,
-                body: body,
-                creationdate: new Date()
-            })
-
-            res.json(todo)
-        }catch (e) {
-            res.status(500).json(e)
+class TodoController {
+    async getAll(req, res, next){
+        const todos = await Todo.findAll()
+        if (!todos){
+            return next(ApiError.badRequest('Нет записей'))
         }
+        return res.json(todos)
     }
-    async getAll(req,res){
-        try{
-            const todo = await Todo.findAll()
-            res.json(todo)
-        }catch (e){
-            res.status(500).json(e)
+    async getOne(req, res, next){
+        const {id} = req.query
+        if(!id){
+            return  next(ApiError.badRequest('Id не указан'))
         }
+        const todo = await Todo.findOne({where: {id: id}})
+        return res.json(todo)
     }
-    async getOne(req,res){
-        try {
-            const {id} = req.params
-            const todo = await Todo.findOne({where: {id: id}})
-            res.json(todo)
-        }catch (e) {
-            res.status(500).json(e)
-        }
-    }
-    async update(req,res){
+    async create(req, res, next){
         try{
-        const {id} = req.params
-        const {header, body, creationdate, userid} = req.body
-        if (!id){
-            res.status(400).json({message: "Id не указан"})
-        }
-
-        const todo = await Todo.findOne({where: { id: id}})
-        await todo.update({
-            header: header,
-            body: body,
-            creationdate: creationdate,
-            userid: userid
-        })
-        res.json(todo)
-    }catch (e){
-        res.status(500).json(e)
-    }}
-    async delete(req,res){
-        try{
-            const {id} = req.params
-            if (!id) {
-                res.status(400).json({message: "Id не указан"})
+            const {header, body, userId} = req.body
+            if(!userId && body && header){
+                return next(ApiError.badRequest('Введите все данные'))
             }
-            const todo = await Todo.findOne({where: { id: id}})
-            await todo.delete({where: {id: id }})
-            res.json(todo)
+            const todo = await  Todo.create({header: header, body: body, creationdate: new Date(), userId: userId})
+            await TodoList.update({todoListId: userId}, {where:{userId: userId}})
+            return res.json(todo)
         }catch (e) {
-            res.status(500).json(e)
+            return next(ApiError.ithernal(e.message))
         }
-    }
 
+
+    }
+    async update(req, res, next){
+        try {
+            const {id} = req.query
+            if(!id){
+                return  next(ApiError.badRequest('Id не указан'))
+            }
+            const {header, body} = req.body
+            const todo = await  Todo.update({header, body}, {where: {id: id}})
+            return res.json({header, body})
+        }catch (e) {
+            return next(ApiError.ithernal("Непредвиденная ошибка!"))
+        }
+
+
+    }
 
 }
 
-export default new TodoController()
+module.exports = new TodoController()

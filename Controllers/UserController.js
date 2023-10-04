@@ -1,72 +1,61 @@
-import User from "../Models/UserModel.js";
+const {User, TodoList} = require('../Models/models')
+const ApiError = require("../error/ApiError");
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 
-class UserControler{
-    async create(req,res){
-        try {
-            const {username, email, password} = req.body
-            const user = await User.create({
-                username: username,
-                email: email,
-                password: password
-            })
-            res.json(user)
-        }catch (e) {
-            res.status(500).json(e)
-        }
-    }
-    async getAll(req,res){
-        try{
-            const user = await User.findAll()
-            res.json(user)
-        }catch (e){
-            res.status(500).json(e)
-        }
-    }
-    async getOne(req,res){
-        try{
-            const {id} = req.params
-            if (!id){
-                res.status(400).json({message: "Id не указан"})
-            }
-
-            const user = await User.findOne({where: { id: id}})
-            res.json(user)
-        }catch (e){
-            res.status(500).json(e)
-        }
-    }
-    async update(req,res){
-        try{
-            const {id} = req.params
-            const {username, email,password} = req.body
-            if (!id){
-                res.status(400).json({message: "Id не указан"})
-            }
-
-            const user = await User.findOne({where: { id: id}})
-            await user.update({
-                username: username,
-                email: email,
-                password: password
-            })
-            res.json(user)
-    }catch (e){
-            res.status(500).json(e)
-    }}
-    async delete(req,res){
-    try {
-        const {id} = req.params
-        if (!id) {
-            res.status(400).json({message: "Id не указан"})
-        }
-        const user = await User.findOne({where: { id: id}})
-        await user.delete({where: {id: id }})
-        res.json(user)
-    }catch (e) {
-        res.status(500).json(e)
-    }
+const generateJWT = (id, email,username) => {
+    return jwt.sign({
+            id: id,
+            email: email,
+            username: username,
+        }, process.env.SECRET_KEY,
+        {expiresIn: '24h'}
+    )
 }
+class UserController {
+    async register(req, res, next){
+        const {username, email, password} = req.body
+            console.log(username,email,password)
+            if(!username || !email || !password){
+                return next(ApiError.badRequest('Некоректный email, пароль или username'))
+            }
+            const conditate = await User.findOne({where: {email}})
+            if (conditate){
+                return next(ApiError.badRequest('Пользователь существует'))
+            }
+            const hashPassword = await bcrypt.hash(password, 5)
+            const user = await User.create({username, email, password:hashPassword})
+            const todolist = await  TodoList.create({userId: user.id})
+            const token =  generateJWT(user.id, user.email,user.username)
+            return res.json({token})
+
+
+    }
+    async login(req, res, next){
+        const {id}= req.params
+        const {email, password} = req.body
+        const user = await User.findOne({where: {email}})
+        if (!user){
+            return next(ApiError.ithernal('Пользователь не найден'))
+        }
+        let comparePassword = bcrypt.compareSync(password, user.password)
+        if(!comparePassword){
+            return next(ApiError.ithernal('Неверный пароль'))
+        }
+        const token = generateJWT(user.id, user.email, user.username)
+            res.cookie('access_token', 'Bearer ' + token, {
+                expires: new Date(Date.now() + 8 * 3600000) // cookie will be removed after 8 hours
+            })
+        return res.json({token})
+
+
+    }
+    async auth(req, res, next){
+        const token = generateJWT(req.user.id, req.user.email, req.user.username)
+
+    }
+
 
 }
 
-export default new UserControler()
+module.exports = new UserController()
