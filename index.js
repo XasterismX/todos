@@ -7,6 +7,7 @@ const models = require('./Models/models')
 const cookieParser = require("cookie-parser");
 const cors = require("cors")
 const error = require('./Middleware/ErrorMiddlewereHandler')
+const path = require("path");
 
 const app = express()
 const port = process.env.PORT
@@ -16,6 +17,7 @@ app.use(bodyParser.urlencoded({extended: true}))
 app.use(cookieParser());
 app.use(cors())
 app.use('/api', router)
+
 
 app.use(error)
 
