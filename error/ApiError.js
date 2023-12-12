@@ -7,10 +7,10 @@ class ApiError extends Error{
     static badRequest(message){
         return new ApiError(404, message)
     }
-static ithernal(message){
+    static ithernal(message){
         return new ApiError(500, message)
     }
-static frobbiden(message){
+    static frobbiden(message){
         return new ApiError(403, message)
     }
 

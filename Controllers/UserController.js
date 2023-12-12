@@ -15,7 +15,6 @@ const generateJWT = (id, email,username) => {
 class UserController {
     async register(req, res, next){
         const {username, email, password} = req.body
-            console.log(username,email,password)
             if(!username || !email || !password){
                 return next(ApiError.badRequest('Некоректный email, пароль или username'))
             }
@@ -25,10 +24,11 @@ class UserController {
             }
             const hashPassword = await bcrypt.hash(password, 5)
             const user = await User.create({username, email, password:hashPassword})
-            const todolist = await  TodoList.create({userId: user.id})
             const token =  generateJWT(user.id, user.email,user.username)
-            return res.json({token})
-
+            res.cookie('access_token', 'Bearer ' + token, {
+                expires: new Date(Date.now() + 8 * 3600000) // cookie will be removed after 8 hours
+            })
+            return res.cookies
 
     }
     async login(req, res, next){
@@ -46,12 +46,13 @@ class UserController {
             res.cookie('access_token', 'Bearer ' + token, {
                 expires: new Date(Date.now() + 8 * 3600000) // cookie will be removed after 8 hours
             })
-        return res.json({token})
+        return res.status(200)
 
 
     }
     async auth(req, res, next){
         const token = generateJWT(req.user.id, req.user.email, req.user.username)
+        res.redirect('/todos')
 
     }
 
