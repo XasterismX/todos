@@ -16,7 +16,7 @@ class UserController {
     async register(req, res, next){
         const {username, email, password} = req.body
             if(!username || !email || !password){
-                return next(ApiError.badRequest('Некоректный email, пароль или username'))
+                return next(ApiError.badRequest('Неккоректный емейл, пароль или username'))
             }
             const conditate = await User.findOne({where: {email}})
             if (conditate){
